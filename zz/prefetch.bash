@@ -1,0 +1,2 @@
+
+curl -X POST -H 'Authorization: QBox D0kBjb8UpWlNtfKDUwkPkG1m1oIHE6mpnYIa3Yvw:9SbN2foJznhdHuJonf3RRBj8_bE=' http://fusion.qiniuapi.com/v2/tune/prefetch -d '{"urls":["http://www.kim1.kim/index.html"]}' -H 'Content-Type: application/json'

@@ -1,0 +1,1 @@
+curl -X POST -H "Authorization: QBox D0kBjb8UpWlNtfKDUwkPkG1m1oIHE6mpnYIa3Yvw:$(<zzcdn/token)" http://fusion.qiniuapi.com/v2/tune/refresh -d '{"urls":["http://www.kim1.kim/index.html"]}' -H 'Content-Type: application/json'

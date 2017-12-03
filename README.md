@@ -1,0 +1,1 @@
+gulp-qiniu-utils, such as upload, prefetch, refresh and so on
