@@ -1,80 +1,201 @@
-var through = require('through2');
-var gutil = require('gulp-util');
-var PluginError = gutil.PluginError;
-var qiniu = require("qiniu");
-// 常量
-const PLUGIN_NAME = 'gulp-prefixer';
+var qiniu = require('qiniu')
+var fs = require('fs')
 
-
-//需要填写你的 Access Key 和 Secret Key
-var accessKey = 'D0kBjb8UpWlNtfKDUwkPkG1m1oIHE6mpnYIa3Yvw';
-var secretKey = 'zs5E454laPxsVe3pVppClFXYgjcX1_k7Dkk82htq';
-//要上传的空间
-var bucket = 'file';
-//上传到七牛后保存的文件名
-var mac = new qiniu.auth.digest.Mac(accessKey, secretKey)
-
-var options = {
-  scope: bucket,
-};
-var putPolicy = new qiniu.rs.PutPolicy(options);
-var uploadToken = putPolicy.uploadToken(mac);
-
-var config = new qiniu.conf.Config();
-// 空间对应的机房
-config.zone = qiniu.zone.Zone_z0;
-
-
-var formUploader = new qiniu.form_up.FormUploader(config);
-var putExtra = new qiniu.form_up.PutExtra();
-
-
-
-// 插件级别的函数（处理文件）
-function gulpPrefixer(prefixText) {
-  if (!prefixText) {
-    throw new PluginError(PLUGIN_NAME, 'Missing prefix text!');
+module.exports = class Qiniu {
+  constructor(option) {
+    this.mac = new qiniu.auth.digest.Mac(option.ak, option.sk)
+    this.option = option
   }
-
-  prefixText = new Buffer(prefixText); // 提前分配
-  var promises = [];
-  // 创建一个 stream 通道，以让每个文件通过
-  var stream = through.obj(function (file, enc, cb) {
-    if (file.isStream()) {
-      this.emit('error', new PluginError(PLUGIN_NAME, 'Streams are not supported!'));
-      return cb();
+  getFiles() {
+    var options = {
+      prefix: this.option._DIR||this.option.remoteDir
     }
-    if (file.isBuffer()) {
-      function w() {
-        return new Promise((resolve, reject) => formUploader.putFile(uploadToken, file.history[0].substr(9), file.history[0], putExtra, function (respErr, respBody, respInfo) {
-          if (respErr) {
-            throw respErr;
-          }
-          // console.log(respInfo.statusCode)
-          if (respInfo.statusCode == 200) {
-            resolve(respBody);
+    var config = new qiniu.conf.Config()
+    //config.useHttpsDomain = true;
+    config.zone = qiniu.zone[this.option.zone]
+    var bucketManager = new qiniu.rs.BucketManager(this.mac, config)
+    return new Promise((resolve, reject) => {
+      bucketManager.listPrefix(this.option.bucket, options, function (
+        err,
+        respBody,
+        respInfo
+      ) {
+        if (err) {
+          console.log(err)
+          throw err
+        }
+        if (respInfo.statusCode == 200) {
+          //如果这个nextMarker不为空，那么还有未列举完毕的文件列表，下次调用listPrefix的时候，
+          //指定options里面的marker为这个值
+          var nextMarker = respBody.marker
+          var commonPrefixes = respBody.commonPrefixes
+          // console.log(nextMarker);
+          // console.log(commonPrefixes);
+          var items = respBody.items
+          resolve({
+            items,
+            bucketManager
+          })
+        } else {
+          console.log(respInfo.statusCode)
+          console.log(respBody)
+          reject(respBody)
+        }
+      })
+    })
+  }
+  remove() {
+    this.option._DIR = this.option.removeDir
+    return new Promise((resovle, reject) => this.getFiles(this.option).then((data) => {
+      if (data.items.length) {
+        var deleteOperations = [];
+        data.items.map((item) => {
+          deleteOperations.push(qiniu.rs.deleteOp(this.option.bucket, item.key))
+        })
+        data.bucketManager.batch(deleteOperations, function (err, respBody, respInfo) {
+          if (err) {
+            console.log(err);
+            //throw err;
           } else {
-            reject(respBody.error);
+            // 200 is success, 298 is part success
+            if (parseInt(respInfo.statusCode / 100) == 2) {
+              respBody.forEach(function (item, i) {
+                if (item.code == 200) {
+                  console.log("remove success" + "\t" + item.code + "\t" + data.items[i].key);
+                } else {
+                  console.log(item.data.error + "\t" + item.code + "\t" + data.items[i].key);
+                }
+              });
+              resovle()
+            } else {
+              console.log(respInfo.deleteusCode);
+              console.log(respBody);
+              reject()
+            }
           }
-        }))
+        });
+      } else {
+        console.log("There is no file in this removeDir!")
+        resovle()
       }
-    }
-    // 确保文件进入下一个 gulp 插件
-    var that = this
-    async function s(){
-      if(w){
-        var res=await w()
-        console.log(res.key+" upload successfully")
-      }
-      that.push(file);
-      cb()
-    }
-    s()
-    // 告诉 stream 引擎，我们已经处理完了这个文件
-  });
-  // 返回文件 stream
-  return stream;
-};
+    }))
+  }
+  prefetch() {
+    this.option._DIR = this.option.prefetchDir
+    return new Promise((resovle, reject) => this.getFiles(this.option).then(data => {
+      var urls = []
+      var cdnManager = new qiniu.cdn.CdnManager(this.mac)
+      data.items.map((item) => {
+        console.log(this.option.url + item.key)
+        urls.push(this.option.url + item.key)
+      })
+      cdnManager.prefetchUrls(urls, function (err, respBody, respInfo) {
+        if (err) {
+          reject()
+          throw err
+        }
+        // console.log("prefetch "+respInfo.statusCode);
+        if (respInfo.statusCode == 200) {
+          var jsonBody = JSON.parse(respBody)
+          // console.log(jsonBody.code);
+          console.log('prefetch ' + jsonBody.error)
+          resovle()
+        }
+      })
+    }))
+  }
+  refresh() {
+    this.option._DIR = this.option.refreshDir
+    return new Promise((resovle, reject) => this.getFiles(this.option).then(data => {
+      var urls = []
+      var cdnManager = new qiniu.cdn.CdnManager(this.mac);
+      data.items.map((item) => {
+        console.log(this.option.url + item.key)
+        urls.push(this.option.url + item.key)
+      })
+      cdnManager.refreshUrls(urls, function (err, respBody, respInfo) {
+        if (err) {
+          reject()
+          throw err;
+        }
+        // console.log("Refresh "+respInfo.statusCode);
+        if (respInfo.statusCode == 200) {
+          var jsonBody = JSON.parse(respBody);
+          // console.log(jsonBody.code);
+          console.log("Refresh " + jsonBody.error);
+          resovle()
+        }
+      })
+    }))
+  }
+  upload() {
+    var bucket = this.option.bucket
+    var config = new qiniu.conf.Config()
+    // 空间对应的机房
+    config.zone = qiniu.zone[this.option.zone]
 
-// 导出插件主函数
-module.exports = gulpPrefixer;
+    function Traversal(path) {
+      if (path.endsWith('/')) {
+        path = path.substr(0, path.length - 1)
+      }
+      var files = fs.readdirSync(path)
+      return files
+        .map(function (file) {
+          var stat = fs.statSync(path + '/' + file)
+          if (stat.isDirectory()) {
+            return Traversal(path + '/' + file)
+          } else {
+            return path + '/' + file
+          }
+        })
+        .reduce((a, b) => a + ',' + b)
+        .split(',')
+    }
+    // 文件上传
+    return Promise.all(
+        Traversal(this.option.uploadDir).map(localFile => {
+          if (!localFile.endsWith('.html')) {
+            var key = (this.option.prefix ? this.option.prefix : "") +
+              (localFile[0] == '.' ?
+                localFile
+                .split('/')
+                .filter((x, i) => i > 0)
+                .join('/') :
+                localFile)
+            var options = {
+              scope: bucket + ":" + key
+            }
+            var putPolicy = new qiniu.rs.PutPolicy(options)
+            var uploadToken = putPolicy.uploadToken(this.mac)
+            var formUploader = new qiniu.form_up.FormUploader(config)
+            var putExtra = new qiniu.form_up.PutExtra()
+            return new Promise((resolve, reject) =>
+              formUploader.putFile(
+                uploadToken,
+                key,
+                localFile,
+                putExtra,
+                function (respErr, respBody, respInfo) {
+                  if (respErr) {
+                    throw respErr
+                  }
+                  console.log(localFile)
+                  if (respInfo.statusCode == 200) {
+                    resolve(respBody)
+                  } else {
+                    reject(respBody.error)
+                  }
+                }
+              )
+            )
+          }
+        })
+      )
+      .then(() => {
+        console.log('------All files upload ok!------')
+      })
+      .catch(data => {
+        console.log('------Some files upload failed! Because ' + data + " ------")
+      })
+  }
+}
