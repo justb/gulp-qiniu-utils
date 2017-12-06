@@ -45,7 +45,6 @@ gulp.task('upload', function (cb) {
 
 ## License:
 
-MIT License
-Copyright (c) 2017 justb
+Copyright (c) 2017 justb (MIT License)
 
-PS: 有什么问题或者建议直接在GitHub上面提，请各位大爷给我点个`star`，在此谢过各位
+PS：有什么问题或者建议直接在GitHub上面提，请各位大爷给我点个`star`，在此谢过各位
