@@ -24,12 +24,12 @@ var qiniuOptions = {
   uploadDir: './dist', //本地需上传的目录
   bucket: '...', //七牛对应空间
   prefix: 'test/', //上传时添加的前缀，可省略
-  zone: 'Zone_z2', //空间
+  zone: 'Zone_z0', //空间（华东：z0，华北：z1，华南：z2，北美：na0）
   url: 'http...', //域名
   remoteDir: 'test', //七牛空间目录（前缀），如果下面三个相同可省略
-  prefetchDir: 'test',
-  removeDir: 'test',
-  refreshDir: 'test'
+  prefetchDir: 'test',//需预取目录
+  removeDir: 'test',//需删除目录
+  refreshDir: 'test'//需刷新目录
 }
 
 gulp.task('upload', function (cb) {
