@@ -1,6 +1,6 @@
 {
   "name": "gulp-qiniu-utils",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "description":
     "gulp-qiniu-utils, such as upload, remove, prefetch, refresh and so on",
   "main": "index.js",
@@ -16,6 +16,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/justb/gulp-qiniu-utils"
+    "url": "git+https://github.com/justb/gulp-qiniu-utils"
   }
 }
