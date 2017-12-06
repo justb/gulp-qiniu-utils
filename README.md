@@ -1,9 +1,17 @@
 
-<p align="center"><img src="https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1512500664746&di=fc81cf16126ea6dad57f93040fa1cf28&imgtype=0&src=http%3A%2F%2Fimg.mp.itc.cn%2Fupload%2F20170704%2F588fdedfab224d34a6a0dcc7f6687686.jpg" alt="七牛云存储"></p>
-
+<p align="center"><img src="http://assets.qiniu.com/qiniu-409x220.png" alt="七牛云存储"></p>
 gulp-qiniu-utils, such as upload, remove, prefetch, refresh and so on
 
-##Example:
+##Install:
+
+Install with npm or cnpm
+
+```js
+npm install --save-dev gulp-qiniu-utils
+cnpm install --save-dev gulp-qiniu-utils
+```
+
+##Usage:
 
 ```js
 
@@ -13,7 +21,7 @@ var Qiniu = require('gulp-qiniu-utils')
 var qiniuOptions = {
   ak: 'your accessKey',
   sk: 'your secretKey',
-  uploadDir: './dist', //本地目录
+  uploadDir: './dist', //本地需上传的目录
   bucket: '...', //七牛对应空间
   prefix: 'test/', //上传时添加的前缀，可省略
   zone: 'Zone_z2', //空间
