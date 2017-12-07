@@ -4,6 +4,11 @@ var fs = require('fs')
 module.exports = class Qiniu {
   constructor(option) {
     this.mac = new qiniu.auth.digest.Mac(option.ak, option.sk)
+    if(option.url){
+      if (!option.url.endsWith('/')) {
+        option.url += '/'
+      }
+    }
     this.option = option
   }
   getFiles() {
