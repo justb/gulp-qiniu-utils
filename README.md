@@ -15,7 +15,7 @@ cnpm install --save-dev gulp-qiniu-utils
 
 ```js
 
-var gulp = require('gulp');
+var gulp = require('gulp')
 var Qiniu = require('gulp-qiniu-utils')
 
 var qiniuOptions = {
