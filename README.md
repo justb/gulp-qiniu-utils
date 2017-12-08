@@ -43,8 +43,5 @@ gulp.task('upload', function (cb) {
 
 ```
 
-## License:
-
-Copyright (c) 2017 Lewis Wei (MIT License)
 
 PS：有什么问题或者建议可以在[github](https://github.com/justb/gulp-qiniu-utils)上面提，觉得好用的话可以点个`star`
