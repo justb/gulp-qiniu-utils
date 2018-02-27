@@ -1,6 +1,6 @@
 {
   "name": "gulp-qiniu-utils",
-  "version": "1.1.1",
+  "version": "2.0.1",
   "description":
     "gulp-qiniu-utils, such as upload, remove, prefetch, refresh and so on",
   "main": "index.js",
