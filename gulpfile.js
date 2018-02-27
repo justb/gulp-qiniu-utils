@@ -4,15 +4,22 @@ var Qiniu = require('gulp-qiniu-utils')
 var qiniuOptions = {
   ak: 'your accessKey',
   sk: 'your secretKey',
-  uploadDir: './dist', //本地目录
-  bucket: '...', //七牛对应空间
-  prefix: 'test/', //上传时添加的前缀，可省略
-  zone: 'Zone_z2', //空间
-  url: 'http...', //域名
-  remoteDir: 'test', //七牛空间目录（前缀），如果下面三个相同可省略
-  prefetchDir: 'test',
-  removeDir: 'test',
-  refreshDir: 'test'
+  zone: 'Zone_z2',//空间对应存储区域（华东：z0，华北：z1，华南：z2，北美：na0）
+  bucket: '...',//七牛对应空间
+  upload: {
+    dir: './public/dist',//上传本地目录
+    prefix: 'test/',//上传时添加的前缀，可省略
+    except: /\.(html|js)$/ //上传时不上传文件的正则匹配
+  },
+  remote: {
+    url: 'http...',//七牛空间域名
+    prefix: {
+      default: 'test/',//七牛空间默认前缀，如果下面三个相同可省略
+      remove: 'test/',//七牛空间删除前缀
+      prefetch: 'test/',//七牛空间预取前缀
+      refresh: 'test/'//七牛空间刷新前缀
+    }
+  }
 }
 
 gulp.task('upload', function (cb) {

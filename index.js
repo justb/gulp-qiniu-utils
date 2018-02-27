@@ -4,16 +4,16 @@ var fs = require('fs')
 module.exports = class Qiniu {
   constructor(option) {
     this.mac = new qiniu.auth.digest.Mac(option.ak, option.sk)
-    if(option.url){
-      if (!option.url.endsWith('/')) {
-        option.url += '/'
+    if (option.remote.url) {
+      if (!option.remote.url.endsWith('/')) {
+        option.remote.url += '/'
       }
     }
     this.option = option
   }
   getFiles() {
     var options = {
-      prefix: this.option._DIR||this.option.remoteDir
+      prefix: this.option._DIR || this.option.remote.prefix.default
     }
     var config = new qiniu.conf.Config()
     //config.useHttpsDomain = true;
@@ -50,7 +50,7 @@ module.exports = class Qiniu {
     })
   }
   remove() {
-    this.option._DIR = this.option.removeDir
+    this.option._DIR = this.option.remote.prefix.remove
     return new Promise((resovle, reject) => this.getFiles(this.option).then((data) => {
       if (data.items.length) {
         var deleteOperations = [];
@@ -71,7 +71,7 @@ module.exports = class Qiniu {
                   console.log(item.data.error + "\t" + item.code + "\t" + data.items[i].key);
                 }
               });
-              resovle()
+              resovle(true)
             } else {
               console.log(respInfo.deleteusCode);
               console.log(respBody);
@@ -81,18 +81,18 @@ module.exports = class Qiniu {
         });
       } else {
         console.log("There is no file in this removeDir!")
-        resovle()
+        resovle(true)
       }
     }))
   }
   prefetch() {
-    this.option._DIR = this.option.prefetchDir
+    this.option._DIR = this.option.remote.prefix.prefetch
     return new Promise((resovle, reject) => this.getFiles(this.option).then(data => {
       var urls = []
       var cdnManager = new qiniu.cdn.CdnManager(this.mac)
       data.items.map((item) => {
-        console.log(this.option.url + item.key)
-        urls.push(this.option.url + item.key)
+        console.log(this.option.remote.url + item.key)
+        urls.push(this.option.remote.url + item.key)
       })
       cdnManager.prefetchUrls(urls, function (err, respBody, respInfo) {
         if (err) {
@@ -103,20 +103,20 @@ module.exports = class Qiniu {
         if (respInfo.statusCode == 200) {
           var jsonBody = JSON.parse(respBody)
           // console.log(jsonBody.code);
-          console.log('prefetch ' + jsonBody.error)
-          resovle()
+          console.log('Prefetch ' + jsonBody.error + '\t' + jsonBody.code)
+          resovle(data.items)
         }
       })
     }))
   }
   refresh() {
-    this.option._DIR = this.option.refreshDir
+    this.option._DIR = this.option.remote.prefix.refresh
     return new Promise((resovle, reject) => this.getFiles(this.option).then(data => {
       var urls = []
       var cdnManager = new qiniu.cdn.CdnManager(this.mac);
       data.items.map((item) => {
-        console.log(this.option.url + item.key)
-        urls.push(this.option.url + item.key)
+        console.log(this.option.remote.url + item.key)
+        urls.push(this.option.remote.url + item.key)
       })
       cdnManager.refreshUrls(urls, function (err, respBody, respInfo) {
         if (err) {
@@ -127,8 +127,8 @@ module.exports = class Qiniu {
         if (respInfo.statusCode == 200) {
           var jsonBody = JSON.parse(respBody);
           // console.log(jsonBody.code);
-          console.log("Refresh " + jsonBody.error);
-          resovle()
+          console.log("Refresh " + jsonBody.error + '\t' + jsonBody.code);
+          resovle(data.items)
         }
       })
     }))
@@ -158,49 +158,44 @@ module.exports = class Qiniu {
     }
     // 文件上传
     return Promise.all(
-        Traversal(this.option.uploadDir).map(localFile => {
-          if (!localFile.endsWith('.html')) {
-            var key = (this.option.prefix ? this.option.prefix : "") +
-              (localFile[0] == '.' ?
-                localFile
-                .split('/')
-                .filter((x, i) => i > 0)
-                .join('/') :
-                localFile)
-            var options = {
-              scope: bucket + ":" + key
+      Traversal(this.option.upload.dir).filter(l => !l.match(this.option.upload.except)).map(localFile => {
+        var key = (this.option.upload.prefix ? this.option.upload.prefix : "") +
+          (localFile[0] == '.' ?
+            localFile
+            .split('/')
+            .filter((x, i) => i > 0)
+            .join('/') :
+            localFile)
+        var options = {
+          scope: bucket + ":" + key
+        }
+        var putPolicy = new qiniu.rs.PutPolicy(options)
+        var uploadToken = putPolicy.uploadToken(this.mac)
+        var formUploader = new qiniu.form_up.FormUploader(config)
+        var putExtra = new qiniu.form_up.PutExtra()
+        return new Promise((resolve, reject) =>
+          formUploader.putFile(
+            uploadToken,
+            key,
+            localFile,
+            putExtra,
+            function (respErr, respBody, respInfo) {
+              if (respErr) {
+                throw respErr
+              }
+              if (respInfo.statusCode == 200) {
+                console.log("upload success" + "\t" + respInfo.statusCode + "\t" + localFile + "\t" + respInfo.data.key)
+                resolve({
+                  local: localFile,
+                  remote: respInfo.data.key
+                })
+              } else {
+                reject(respBody.error)
+              }
             }
-            var putPolicy = new qiniu.rs.PutPolicy(options)
-            var uploadToken = putPolicy.uploadToken(this.mac)
-            var formUploader = new qiniu.form_up.FormUploader(config)
-            var putExtra = new qiniu.form_up.PutExtra()
-            return new Promise((resolve, reject) =>
-              formUploader.putFile(
-                uploadToken,
-                key,
-                localFile,
-                putExtra,
-                function (respErr, respBody, respInfo) {
-                  if (respErr) {
-                    throw respErr
-                  }
-                  console.log(localFile)
-                  if (respInfo.statusCode == 200) {
-                    resolve(respBody)
-                  } else {
-                    reject(respBody.error)
-                  }
-                }
-              )
-            )
-          }
-        })
-      )
-      .then(() => {
-        console.log('------All files upload ok!------')
+          )
+        )
       })
-      .catch(data => {
-        console.log('------Some files upload failed! Because ' + data + " ------")
-      })
+    )
   }
 }
