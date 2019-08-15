@@ -144,7 +144,8 @@ module.exports = class Qiniu {
         path = path.substr(0, path.length - 1)
       }
       var files = fs.readdirSync(path)
-      return files
+
+      files
         .map(function (file) {
           var stat = fs.statSync(path + '/' + file)
           if (stat.isDirectory()) {
@@ -153,8 +154,9 @@ module.exports = class Qiniu {
             return path + '/' + file
           }
         })
-        .reduce((a, b) => a + ',' + b)
-        .split(',')
+        .reduce((a, b) => a + ',' + b);
+      var dd = files.toString().split(',');
+      return dd;
     }
     // 文件上传
     return Promise.all(
@@ -173,6 +175,7 @@ module.exports = class Qiniu {
         var uploadToken = putPolicy.uploadToken(this.mac)
         var formUploader = new qiniu.form_up.FormUploader(config)
         var putExtra = new qiniu.form_up.PutExtra()
+        localFile = this.option.upload.dir +"\\"+ localFile;
         return new Promise((resolve, reject) =>
           formUploader.putFile(
             uploadToken,
