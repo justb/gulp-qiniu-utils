@@ -1,13 +1,16 @@
 {
   "name": "gulp-qiniu-utils",
-  "version": "2.0.1",
-  "description":
-    "gulp-qiniu-utils, such as upload, remove, prefetch, refresh and so on",
+  "version": "2.0.2",
+  "description": "七牛gulp插件，封装了上传，删除，预取，刷新等功能，\n gulp-qiniu-utils, such as upload, remove, prefetch, refresh and so on",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["gulp", "qiniu", "upload"],
+  "keywords": [
+    "gulp",
+    "qiniu",
+    "upload"
+  ],
   "author": "lewiswei",
   "license": "ISC",
   "devDependencies": {},
