@@ -2,6 +2,8 @@
 <p align="center"><img src="http://assets.qiniu.com/qiniu-409x220.png" alt="七牛云存储"></p>
 gulp-qiniu-utils, such as upload, remove, prefetch, refresh and so on
 
+七牛gulp插件，封装了上传，删除，预取，刷新等功能
+
 ## Install:
 
 Install with `npm` or `cnpm`
