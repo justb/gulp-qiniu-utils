@@ -138,8 +138,10 @@ module.exports = class Qiniu {
     var config = new qiniu.conf.Config()
     // 空间对应的机房
     config.zone = qiniu.zone[this.option.zone]
+    let fileAffay = [];
 
     function Traversal(path) {
+
       if (path.endsWith('/')) {
         path = path.substr(0, path.length - 1)
       }
@@ -149,18 +151,16 @@ module.exports = class Qiniu {
         .map(function (file) {
           var stat = fs.statSync(path + '/' + file)
           if (stat.isDirectory()) {
-            return Traversal(path + '/' + file)
+             Traversal(path + '/' + file)
           } else {
-            return path + '/' + file
+            fileAffay.push(path + '/' + file);
           }
-        })
-        .reduce((a, b) => a + ',' + b);
-      var dd = files.toString().split(',');
-      return dd;
+        });
     }
+    Traversal(this.option.upload.dir)
     // 文件上传
     return Promise.all(
-      Traversal(this.option.upload.dir).filter(l => !l.match(this.option.upload.except)).map(localFile => {
+      fileAffay.filter(l => !l.match(this.option.upload.except)).map(localFile => {
         var key = (this.option.upload.prefix ? this.option.upload.prefix : "") +
           (localFile[0] == '.' ?
             localFile
@@ -175,7 +175,6 @@ module.exports = class Qiniu {
         var uploadToken = putPolicy.uploadToken(this.mac)
         var formUploader = new qiniu.form_up.FormUploader(config)
         var putExtra = new qiniu.form_up.PutExtra()
-        localFile = this.option.upload.dir +"\\"+ localFile;
         return new Promise((resolve, reject) =>
           formUploader.putFile(
             uploadToken,
